@@ -1,0 +1,99 @@
+services:
+  apim:
+    image: wso2/wso2am:${APIM_VERSION}
+    container_name: apim
+    restart: unless-stopped
+    environment:
+      - TZ=${TIMEZONE}
+      - JAVA_OPTS=-Duser.timezone=${TIMEZONE}
+      - WSO2_SERVER_HOST=apim
+    ports:
+      - "9443:9443"   # Admin/Publisher/Dev portal (HTTPS)
+      - "9763:9763"   # Admin/Publisher/Dev portal (HTTP)
+    volumes:
+      - apim_repository:/home/wso2carbon/wso2am/repository
+    healthcheck:
+      test: ["CMD", "curl", "-k", "https://localhost:9443/services/Version"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+    networks:
+      - mgmt_net
+
+  dmz-gateway-adapter:
+    image: wso2/choreo-connect-adapter:${CC_VERSION}
+    container_name: dmz-gateway-adapter
+    restart: unless-stopped
+    depends_on:
+      - apim
+    environment:
+      - TZ=${TIMEZONE}
+    volumes:
+      - ./config/choreo-connect/config.toml:/home/wso2/config.toml:ro
+      - ./config/choreo-connect/security/keystore:/home/wso2/security/keystore:ro
+      - ./config/choreo-connect/security/truststore:/home/wso2/security/truststore:ro
+    networks:
+      mgmt_net:
+        aliases:
+          - adapter
+      dmz_net:
+        aliases:
+          - adapter
+
+  dmz-gateway-enforcer:
+    image: wso2/choreo-connect-enforcer:${CC_VERSION}
+    container_name: dmz-gateway-enforcer
+    restart: unless-stopped
+    depends_on:
+      - dmz-gateway-adapter
+    environment:
+      - TZ=${TIMEZONE}
+    volumes:
+      - ./config/choreo-connect/security/keystore:/home/wso2/security/keystore:ro
+      - ./config/choreo-connect/security/truststore:/home/wso2/security/truststore:ro
+    networks:
+      - mgmt_net
+      - dmz_net
+
+  dmz-gateway-router:
+    image: wso2/choreo-connect-router:${CC_VERSION}
+    container_name: dmz-gateway-router
+    restart: unless-stopped
+    depends_on:
+      - dmz-gateway-adapter
+      - dmz-gateway-enforcer
+    environment:
+      - TZ=${TIMEZONE}
+    volumes:
+      - ./config/choreo-connect/security/keystore:/home/wso2/security/keystore:ro
+      - ./config/choreo-connect/security/truststore:/home/wso2/security/truststore:ro
+    ports:
+      - "9090:9090"   # Gateway listener for external traffic
+      - "9095:9095"   # Admin/metrics for the gateway
+    networks:
+      - dmz_net
+      - internal_net
+
+  backend:
+    image: mccutchen/go-httpbin
+    container_name: backend
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+    expose:
+      - "8080"
+    ports:
+      - "8081:8080"   # Optional: reach backend directly from host for debugging
+    networks:
+      - internal_net
+
+volumes:
+  apim_repository:
+
+networks:
+  mgmt_net:
+    name: mgmt_net
+  dmz_net:
+    name: dmz_net
+  internal_net:
+    name: internal_net

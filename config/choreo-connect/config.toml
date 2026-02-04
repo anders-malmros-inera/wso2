@@ -1,0 +1,23 @@
+# Choreo Connect gateway configuration
+# NOTE: This file is a simplified starting point. Adjust truststores, certs, and control-plane endpoints for your environment.
+
+[apim.controlPlane]
+  enabled = true
+  serviceUrl = "https://apim:9443/"
+  username = "${ADMIN_USERNAME}"
+  password = "${ADMIN_PASSWORD}"
+  environmentLabels = ["Default"]
+  retryIntervalSeconds = 5
+
+[router]
+  listener = "0.0.0.0:9090"
+  managementListener = "0.0.0.0:9095"
+
+[enforcer]
+  enableOutboundAuthHeader = true
+
+[[apis]]
+  basePath = "/httpbin"
+  upstream = "http://backend:8080"
+  version = "1.0.0"
+  name = "httpbin"
