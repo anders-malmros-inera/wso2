@@ -1,15 +1,11 @@
 services:
   apim:
     image: wso2/wso2am:${APIM_VERSION}
-    container_name: apim
     restart: unless-stopped
     environment:
       - TZ=${TIMEZONE}
       - JAVA_OPTS=-Duser.timezone=${TIMEZONE}
       - WSO2_SERVER_HOST=apim
-    ports:
-      - "9443:9443"   # Admin/Publisher/Dev portal (HTTPS)
-      - "9763:9763"   # Admin/Publisher/Dev portal (HTTP)
     volumes:
       - apim_repository:/home/wso2carbon/wso2am/repository
     healthcheck:
@@ -22,7 +18,6 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:${KEYCLOAK_VERSION}
-    container_name: keycloak
     restart: unless-stopped
     command: start-dev --http-port=8082 --import-realm
     environment:
@@ -31,8 +26,6 @@ services:
       - TZ=${TIMEZONE}
     volumes:
       - ./config/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
-    ports:
-      - "8082:8082"   # Keycloak HTTP (dev)
     networks:
       mgmt_net:
         aliases:
@@ -40,7 +33,6 @@ services:
 
   dmz-gateway-adapter:
     image: wso2/choreo-connect-adapter:${CC_VERSION}
-    container_name: dmz-gateway-adapter
     restart: unless-stopped
     depends_on:
       - apim
@@ -60,7 +52,6 @@ services:
 
   dmz-gateway-enforcer:
     image: wso2/choreo-connect-enforcer:${CC_VERSION}
-    container_name: dmz-gateway-enforcer
     restart: unless-stopped
     depends_on:
       - dmz-gateway-adapter
@@ -75,7 +66,6 @@ services:
 
   dmz-gateway-router:
     image: wso2/choreo-connect-router:${CC_VERSION}
-    container_name: dmz-gateway-router
     restart: unless-stopped
     depends_on:
       - dmz-gateway-adapter
@@ -85,23 +75,17 @@ services:
     volumes:
       - ./config/choreo-connect/security/keystore:/home/wso2/security/keystore:ro
       - ./config/choreo-connect/security/truststore:/home/wso2/security/truststore:ro
-    ports:
-      - "9090:9090"   # Gateway listener for external traffic
-      - "9095:9095"   # Admin/metrics for the gateway
     networks:
       - dmz_net
       - internal_net
 
   backend:
     image: mccutchen/go-httpbin
-    container_name: backend
     restart: unless-stopped
     environment:
       - PORT=8080
     expose:
       - "8080"
-    ports:
-      - "8081:8080"   # Optional: reach backend directly from host for debugging
     networks:
       - internal_net
 
@@ -110,8 +94,6 @@ volumes:
 
 networks:
   mgmt_net:
-    name: mgmt_net
   dmz_net:
-    name: dmz_net
   internal_net:
-    name: internal_net
+

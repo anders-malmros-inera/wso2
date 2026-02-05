@@ -1,0 +1,17 @@
+name: wso2-prod
+
+services:
+  apim:
+    ports:
+      - "9443:9443"   # Prefer fronting with LB/WAF
+    # Example tighter JVM sizing; adjust per host
+    environment:
+      - JAVA_OPTS=-Duser.timezone=${TIMEZONE} -Xms1g -Xmx2g
+  keycloak:
+    ports: []          # Not host-exposed; keep internal only
+  dmz-gateway-router:
+    ports:
+      - "9090:9090"   # Front with LB in real prod
+      - "9095:9095"   # Metrics/admin; restrict via firewall
+  backend:
+    ports: []          # No host debug exposure

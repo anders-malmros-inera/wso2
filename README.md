@@ -31,6 +31,7 @@ flowchart LR
    end
 
    clients([External clients]) --> gw_router
+   clients -. optional direct auth .-> kc
    gw_router --> backend
 ```
 
@@ -39,14 +40,27 @@ Networks in `docker-compose.yml`:
 - `dmz_net`: data plane edge; router is exposed here (adapter/enforcer also attached)
 - `internal_net`: east-west traffic to backend services
 
+## Environments: test vs prod
+- Test: uses [.env.test](.env.test) with dev-friendly defaults and host-exposed ports via [docker-compose.test.yml](docker-compose.test.yml).
+- Prod-ish: uses [.env.prod](.env.prod) with stronger secrets and restricted ports via [docker-compose.prod.yml](docker-compose.prod.yml) (Keycloak/backend not host-exposed; APIM only 9443; router 9090/9095 still mapped—front with LB/WAF).
+- Base file [docker-compose.yml](docker-compose.yml) holds shared service wiring and no host port bindings; apply an override per environment.
+
+Keycloak selective exposure (recommended for prod): keep Keycloak unexposed in Docker and front it with your edge (LB/WAF/ingress) to publish only the OIDC endpoints clients need, e.g. `/.well-known/openid-configuration`, `/protocol/openid-connect/token`, `/protocol/openid-connect/certs` (and `/protocol/openid-connect/auth` if using auth code/PKCE). Do not expose the admin console; restrict by IP/rate/TLS as needed.
+
 ## Prerequisites
 - Docker and Docker Compose v2
 - At least 6 GB RAM allocated to Docker
 
 ## Start the stack
+- Test (dev-friendly, host ports open):
 ```sh
-docker compose up -d
+docker compose --env-file .env.test -f docker-compose.yml -f docker-compose.test.yml up -d
 ```
+- Prod-ish (restricted exposure):
+```sh
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+Notes: only one stack at a time (port collisions on 9090/9095/9443). Prod variant keeps Keycloak and backend off the host; APIM exposes 9443 only (front with LB/WAF in real prod).
 
 ## Publish an API (/httpbin to backend)
 1) Open Publisher: https://localhost:9443/publisher (accept self-signed cert); login with `ADMIN_USERNAME` / `ADMIN_PASSWORD` from [.env](.env).
@@ -80,6 +94,11 @@ If you see 404, confirm the API is published and deployed to `Default`.
 - Realm: `wso2` (auto-import)
 - Admin user: `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` from [.env](.env)
 - Clients: `apim-admin` (secret `apim-admin-secret`), `choreo-gateway` (secret `choreo-gateway-secret`)
+
+Keycloak for control vs data plane:
+- Control plane (APIM portals/admin): can use the same Keycloak realm or a separate internal Keycloak/realm for operator logins.
+- Data plane (gateway token validation): Choreo Connect enforcer trusts the configured Keycloak issuer (`http://keycloak:8082/realms/wso2`). You can add additional `tokenIssuer` entries in [config/choreo-connect/config.toml](config/choreo-connect/config.toml) to trust a second Keycloak instance/realm for external clients while keeping an internal IdP for ops traffic.
+- Exposure: In this scaffold Keycloak is host-exposed on 8082, so external clients can obtain tokens directly. For production, front it with your edge (LB/WAF) or run separate internal/external realms/instances.
 
 ## Certificates and mTLS
 - Gateway expects `mg.pem`/`mg.key` at `/home/wso2/security/keystore` (dev self-signed in [config/choreo-connect/security/keystore](config/choreo-connect/security/keystore))
