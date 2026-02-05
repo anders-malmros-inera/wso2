@@ -9,6 +9,15 @@
   environmentLabels = ["Default"]
   retryIntervalSeconds = 5
 
+[[enforcer.tokenIssuer]]
+  name = "keycloak"
+  issuer = "http://keycloak:8082/realms/wso2"
+  audience = "choreo-gateway"
+  jwksURL = "http://keycloak:8082/realms/wso2/protocol/openid-connect/certs"
+  validateSubscription = false
+  [enforcer.tokenIssuer.consumerKeyClaim]
+    key = "azp"
+
 [router]
   listener = "0.0.0.0:9090"
   managementListener = "0.0.0.0:9095"

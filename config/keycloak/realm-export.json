@@ -1,0 +1,43 @@
+{
+  "realm": "wso2",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "apim-admin",
+      "secret": "apim-admin-secret",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "redirectUris": ["https://localhost:9443/*", "http://localhost:9763/*"],
+      "webOrigins": ["*"],
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": true
+    },
+    {
+      "clientId": "choreo-gateway",
+      "secret": "choreo-gateway-secret",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "apiuser",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "API",
+      "lastName": "User",
+      "credentials": [
+        { "type": "password", "value": "apipass", "temporary": false }
+      ],
+      "realmRoles": ["offline_access", "uma_authorization"]
+    }
+  ]
+}
